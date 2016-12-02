@@ -10,15 +10,7 @@ from openprocurement.api.design import (
     tenders_test_by_local_seq_view,
 )
 
-from openprocurement.api.utils import (
-    context_unpack,
-    decrypt,
-    encrypt,
-    json_view,
-    tender_serialize,
-    APIResource,
-)
-from openprocurement.edge.utils import opresource
+from openprocurement.edge.utils import opresource, json_view, EDGEResource, decrypt, encrypt, clean_up_doc
 
 
 VIEW_MAP = {
@@ -40,14 +32,14 @@ FEED = {
 @opresource(name='Tenders',
             path='/tenders',
             description="Open Contracting compatible data exchange format. See http://ocds.open-contracting.org/standard/r/master/#tender for more info")
-class TendersResource(APIResource):
+class TendersResource(EDGEResource):
 
     def __init__(self, request, context):
         super(TendersResource, self).__init__(request, context)
         self.server = request.registry.couchdb_server
         self.update_after = request.registry.update_after
 
-    @json_view(permission='view_tender')
+    @json_view()
     def get(self):
         """Tenders List
 
@@ -191,20 +183,19 @@ class TendersResource(APIResource):
 @opresource(name='Tender',
             path='/tenders/{tender_id}',
             description="Open Contracting compatible data exchange format. See http://ocds.open-contracting.org/standard/r/master/#tender for more info")
-class TenderResource(APIResource):
+class TenderResource(EDGEResource):
 
-    @json_view(permission='view_tender')
+    @json_view()
     def get(self):
-        del self.request.validated['tender'].__parent__
-        del self.request.validated['tender'].rev
-        return {'data': self.request.validated['tender']}
+        tender = clean_up_doc(self.request.validated['tender'])
+        return {'data': tender}
 
 
 @opresource(name='Tender Items',
             path='/tenders/{tender_id}/*items',
             description="Open Contracting compatible data exchange format. See http://ocds.open-contracting.org/standard/r/master/#tender for more info")
-class TenderItemsResource(APIResource):
+class TenderItemsResource(EDGEResource):
 
-    @json_view(permission='view_tender')
+    @json_view()
     def get(self):
         return {'data': self.request.validated['item']}

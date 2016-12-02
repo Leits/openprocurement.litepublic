@@ -7,9 +7,6 @@ from datetime import datetime, timedelta
 from openprocurement.api.models import get_now
 from uuid import uuid4
 
-
-from openprocurement.api.models import SANDBOX_MODE
-from openprocurement.api.utils import VERSION
 from openprocurement.api.design import sync_design
 from openprocurement.api.tests.base import BaseWebTest, test_tender_data, test_bids, test_organization, test_lots
 
@@ -39,6 +36,39 @@ test_auction_bids = deepcopy(test_bids)
 for bid in test_auction_bids:
     bid['value']['amount'] = bid['value']['amount'] * bid['value']['amount']
 
+VERSION = '0'
+ROUTE_PREFIX = '/api/{}'.format(VERSION)
+
+class PrefixedRequestClass(webtest.app.TestRequest):
+
+    @classmethod
+    def blank(cls, path, *args, **kwargs):
+        path = '/api/%s%s' % (VERSION, path)
+        return webtest.app.TestRequest.blank(path, *args, **kwargs)
+
+
+class BaseWebTest(BaseWebTest):
+
+    """Base Web Test to test openprocurement.api.
+
+    It setups the database before each test and delete it after.
+    """
+
+    relative_to = os.path.dirname(__file__)
+
+    @classmethod
+    def setUpClass(cls):
+        while True:
+            try:
+                cls.app = webtest.TestApp("config:tests.ini", relative_to=cls.relative_to)
+            except:
+                pass
+            else:
+                break
+        cls.app.RequestClass = PrefixedRequestClass
+        cls.couchdb_server = cls.app.app.registry.couchdb_server
+        cls.db = cls.app.app.registry.db
+        cls.db_name = cls.db.name
 
 class TenderBaseWebTest(BaseWebTest):
     initial_data = test_tender_data
